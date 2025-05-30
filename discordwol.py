@@ -65,6 +65,47 @@ async def shutdown_pc(interaction: discord.Interaction):
     else:
         await interaction.response.send_message('❌ This command can only be used in the designated channel.', ephemeral=True)
 
+@bot.tree.command(name="status", description="Check if your PC is online and get uptime.")
+async def status_pc(interaction: discord.Interaction):
+    if interaction.channel_id == CHANNEL_ID:
+        await interaction.response.defer()
+        try:
+            ssh_client = paramiko.SSHClient()
+            ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh_client.connect(hostname=SSH_HOST, username=SSH_USER, password=SSH_PASSWORD)
+            stdin, stdout, stderr = ssh_client.exec_command("uptime -p")
+            error_output = stderr.read().decode().strip()
+            output = stdout.read().decode().strip()
+            ssh_client.close()
+
+            if error_output:
+                await interaction.followup.send(f"⚠️ Error fetching uptime: {error_output}")
+            else:
+                await interaction.followup.send(f"🖥️ PC Uptime: {output}")
+        except Exception as e:
+            await interaction.followup.send(f"❌ SSH error or PC offline: {e}")
+    else:
+        await interaction.response.send_message('❌ This command can only be used in the designated channel.', ephemeral=True)
+
+@bot.tree.command(name="restart", description="Restart your PC via SSH.")
+async def restart_pc(interaction: discord.Interaction):
+    if interaction.channel_id == CHANNEL_ID:
+        try:
+            ssh_client = paramiko.SSHClient()
+            ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh_client.connect(hostname=SSH_HOST, username=SSH_USER, password=SSH_PASSWORD)
+            stdin, stdout, stderr = ssh_client.exec_command('sudo reboot')
+            error_output = stderr.read().decode()
+            if error_output:
+                await interaction.response.send_message(f'⚠️ Error: {error_output}', ephemeral=True)
+            else:
+                await interaction.response.send_message('🔄 Restart command sent.')
+            ssh_client.close()
+        except Exception as e:
+            await interaction.response.send_message(f'❌ SSH error: {e}', ephemeral=True)
+    else:
+        await interaction.response.send_message('❌ This command can only be used in the designated channel.', ephemeral=True)
+
 @bot.tree.command(name="activedevbadge", description="Info on the Discord Active Developer Badge.")
 async def activedevbadge(interaction: discord.Interaction):
     await interaction.response.send_message(
